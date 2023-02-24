@@ -167,7 +167,26 @@
 03 保存工作区和分支管理
 
     3.1 保存工作区
+        3.1.1 临时保存工作区
+            git stash
 
+        3.1.2 查看现有保存的工作区
+            git stash list
+
+        3.1.3 恢复到某个工作区
+            git stash apply stash@{2}
+
+        3.1.4 恢复并删除上一个工作区
+            git stash pop
+
+        3.1.5 删除指定的工作区
+            git stash drop stash@{0}
+
+        3.1.6 清除工作区
+            git stash clear
+
+
+            
 
 
 
