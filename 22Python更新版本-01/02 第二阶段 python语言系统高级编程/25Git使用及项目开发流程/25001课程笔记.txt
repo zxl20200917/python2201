@@ -144,7 +144,23 @@
             git tag v0.9 6224637
 
 
-        
+        2.4.3 查看标签
+            git tag
+
+        2.4.4 查看标签commit的具体内容
+            git show v1.0
+
+        2.4.5 使用-a指定标签名，-m指定说明文字
+            git tag -a v1.0 -m "version 1.0 released" 3628164
+
+        2.4.6 删除标签
+            git tag -d v1.0
+
+        2.4.7 依据标签恢复到不同状态
+            git reset --hard v1.0
+
+
+
 
 
 
