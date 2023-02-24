@@ -116,6 +116,20 @@
         2.2.8 查看当前文件和已提交内容的差别
             git diff file
 
+            2.2.8.1 查看恢复原来的变化（即使rm -rf filename系统命令删除也是可以恢复的）
+                git checkout -- filename
+
+    2.3 版本控制
+
+        2.3.1 回到上一个版本
+            git reset --hard HEAD^
+            回到上一个版本就一个^，回到上两个版本就是两个^,超过10就是HEAD~10
+
+            直接通过commit_id前7位调到某个版本（先通过git log可以查看commit_id)
+            git reset --hard 7764c27
+
+        
+
         
 
 
