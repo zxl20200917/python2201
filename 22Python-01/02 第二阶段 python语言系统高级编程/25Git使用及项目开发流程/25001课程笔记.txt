@@ -240,6 +240,38 @@
 
 
 04 远程仓库和GITHUB使用
-    
+
+    4.1 GitHub介绍
+        GitHub是一个面向开源及私有软件项目的托管平台，因为只支持git作为唯一的版本库格式进行托管，故名GitHub
+
+        实际上github就可以看做是一个大的开源仓库。相对于人个主机而言可以视作一个远程仓库。
+
+        地址：www.github.com
+
+    4.2 添加远程仓库
+        git remote add origin <远程仓库的地址>
+            origin: 为远程仓库的名称（也可以称为远程仓库的别名）
+
+    4.3 将github的项目克隆到本地
+        git clone <远程项目git地址>
+
+    4.4 推送代码
+        4.4.1 向远程仓库推送代码
+
+            git push -u origin master
+                注：第一次推送代码时加-u选项
+
+        4.4.2 推送标签到远程仓库
+
+            4.4.2.1 推送所有标签
+
+                git push origin --tags
+
+            4.4.2.2 推送指定标签
+
+                git push origin v1.0
+
+
+
 05 软件项目开发
 06 在线词典
