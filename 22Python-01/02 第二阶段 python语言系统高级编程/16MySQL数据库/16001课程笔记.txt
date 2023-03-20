@@ -332,5 +332,8 @@
             查找注册时间在一周以内的记录
             select * from marathon where registration_time > (now() - interval 7 day);
 06 高级查询语句
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 9995fea4aa97a90a7586e8afae6765bd6b6a57a1
