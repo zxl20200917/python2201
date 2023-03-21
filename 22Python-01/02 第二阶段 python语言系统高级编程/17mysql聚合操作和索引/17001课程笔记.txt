@@ -1,0 +1,53 @@
+17 Mysql聚合操作和索引
+
+01 聚合操作
+    1.1 select运行优先级
+        7   select
+        8   [DISTINCT] <select_list>
+        1   FROM <left_table>
+        3   <join_type> JOIN <right_table>
+        2   ON <join_condition>
+        4   WHERE <where_condition>
+        5   GROUP BY <group_by_list>
+        6   HAVING <having_condition>
+        9   ORDER BY <order_by_condition>
+        10  LIMIT <limit_number>
+    1.2 聚合函数
+        方法                      功能
+        avg                     平均值
+        max                     最大值
+        min                     最小值
+        sum                     所有记录的和
+        count                   统计该字段记录的个数
+
+        1.2.1 聚合函数应用实例
+            MariaDB [stu]> select max(attack) from sanguo;
+            +-------------+
+            | max(attack) |
+            +-------------+
+            |        1508 |
+            +-------------+
+            1 row in set (0.001 sec)
+
+            MariaDB [stu]> select count(name) as number from sanguo;
+            +--------+
+            | number |
+            +--------+
+            |     13 |
+            +--------+
+            1 row in set (0.001 sec)
+
+            MariaDB [stu]> select count(*) from sanguo where attack > 200;
+            +----------+
+            | count(*) |
+            +----------+
+            |       10 |
+            +----------+
+            1 row in set (0.001 sec)
+
+11：27
+
+02 索引操作
+03 外键约束
+04 表关联关系与关联查询
+05 视图和数据导出
