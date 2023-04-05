@@ -1,7 +1,628 @@
 18 Python操作Mysql数据库
 
 01 函数和存储过程
+    1.1 函数和存储过程介绍
+        存储过程和函数是事先经过编译并存储在数据库中的一段sql语句集合，
+        调用存储过程和函数可以简化应用开发工作，提高数据处理的效率。
+    1.2 函数和存储过程区别
+        1. 函数有且只有一个返回值，而存储过程不能有返回值。
+        2. 函数只能有输入参数，而存储过程可以有in,out,inout多个类型参数
+        3. 存储过程中的语句功能更丰富，实现更复杂的业务逻辑，而函数中通常不会使用insert,update,delete等语句，
+        只是完成查询的工作。受输入参数并返回一个结果，功能针对性比较强。
+        4. 存储过程一般是作为一个独立的部分来执行(call 调用).而函数可以作为查询语句的一个部分来调用。
+    1.3 创建函数
+        1.3.1 语法:
+            delimiter 自定义符号
+            create function 函数名(形参列表) returns 返回类型
+            begin
+                函数体
+                return val
+            end 自定义符号
+            delimiter;
+
+        1.3.2 应用实例
+            1.3.2.1 创建函数st()
+                mysql> create function st()
+                -> returns int
+                -> begin
+                -> return (select score from cls order by score limit 1);
+                -> end $$
+                delimiter;
+            1.3.2.2 调用函数
+                mysql> select st();
+                +------+
+                | st() |
+                +------+
+                | NULL |
+                +------+
+                1 row in set (0.00 sec)
+
+            注意：错误提示
+                mysql> create function stt1() returns int begin insert into cls values (2,'joy',12,'w',83); insert into cls values (3,'emmo',9,'m',63); set @a=(
+                select age from cls where id=1);return @a; end ##
+
+                错误提示如下：
+                ERROR 1418 (HY000): This function has none of DETERMINISTIC, NO SQL, or READS SQL DATA in its declaration and binary logging is enabled (you *mi
+                ght* want to use the less safe log_bin_trust_function_creators variable)
+
+            解决办法：
+                1. Execute the following in the MySQL console:
+
+                SET GLOBAL log_bin_trust_function_creators = 1;
+                操作如下：
+                mysql> SET GLOBAL log_bin_trust_function_creators = 1;
+                Query OK, 0 rows affected (0.00 sec)
+
+
+                2. Add the following to the mysql.ini configuration file:
+                把如下配置写入到mysql.ini配置文件中，重启服务也可以。
+                log_bin_trust_function_creators = 1;
+            1.3.2.3 创建插入多行数据的函数
+                mysql> delimiter $$
+                mysql> create function st11()
+                    -> returns int
+                    -> begin
+                    -> insert into cls values(2,'joy',12,'m',83);
+                    -> set @a=(select age from cls where id = 1);
+                    -> return @a
+                    -> end $$
+                mysql> delimiter ;
+
+                执行函数：
+                mysql> select st11();
+                +--------+
+                | st11() |
+                +--------+
+                |     11 |
+                +--------+
+                1 row in set (0.00 sec)
+            1.3.2.4 创建有形参的函数并调用
+                mysql> delimiter ##
+                mysql> create function st12(uid int)
+                    -> returns int
+                    -> begin
+                    -> return (select score from cls where id=uid);
+                    -> end ##
+                Query OK, 0 rows affected (1.26 sec)
+
+                mysql> delimiter ;
+
+                查询时传入参数id为1的实参，并返回id为1的score的值
+                mysql> select st12(1);
+                +---------+
+                | st12(1) |
+                +---------+
+                |      77 |
+                +---------+
+                1 row in set (0.00 sec)
+                查询时传入参数id为2的实参，并返回id为2的score的值
+                mysql> select st12(2);
+                +---------+
+                | st12(2) |
+                +---------+
+                |      83 |
+                +---------+
+                1 row in set (0.00 sec)
+
+                mysql>
+    1.4 创建存储过程
+        存储过程一定没有返回值的，这是与函数的最重要的区别。
+        1.4.1 存储过程语法
+            delimiter 自定义符号
+            create procedure 存储过程名(形参列表)
+            begin
+                存储过程
+            end 自定义符号
+            delimiter ;
+
+            1.4.1.1 存储过程参数释义
+                * 形参列表:[IN | OUT | INOUT ] 形参名 类型
+                    in 输入
+                    out 输出
+                    inout 可以输入也可以输出
+                * 存储过程： 若干sql语句组成，如果只有一条语句也可以不写delimiter和begin,end
+                * 存储过程三个参数的区别：
+                    IN 类型参数可以接收变量也可以接收常量，传入的参数在存储过程内部使用即可，但是在存储过程内部
+                    的修改无法传递到外部。
+                    OUT 类型参数只能接收一个变量，接收的变量不能够在存储过程内部使用(内部为NULL),但是可以在存储
+                    过程内对这个变量进行修改。因为定义的变量是全局的，所以外部可以获取这个修改后的值。
+                    INOUT 类型参数同样只能接收一个变量，但是这个变量可以在存储过程内部使用。在存储过程内部的修改
+                    也会传递到外部。
+        1.4.2 应用实例
+            1.4.2.1 无参数的存储过程
+                mysql> delimiter ##
+                mysql> create procedure st01()
+                    -> begin
+                    -> select name,age from cls;
+                    -> update cls set score = 100 where id=1;
+                    -> end ##
+                Query OK, 0 rows affected (0.07 sec)
+
+                mysql> delimiter ;
+
+                调用存储过程st01():
+                mysql> call st01();
+                +------+-----+
+                | name | age |
+                +------+-----+
+                | tom  |  11 |
+                | joy  |  12 |
+                +------+-----+
+                2 rows in set (0.00 sec)
+
+                Query OK, 1 row affected (0.00 sec)
+            1.4.2.2 创建in参数的存储过程
+                mysql> delimiter $$
+                mysql> create procedure p_in(in num int)
+                    -> begin
+                    -> select num;
+                    -> set num=100;
+                    -> select num;
+                    -> end $$
+                mysql> delimiter ;
+
+                设置用户变量num=10:
+                mysql> set @num=10;
+                Query OK, 0 rows affected (0.00 sec)
+
+                调用存储赛程:
+                mysql> call p_in01(@num);
+                外部定义变量num还是10没有变化:
+                +------+
+                | num  |
+                +------+
+                |   10 |
+                +------+
+                1 row in set (0.00 sec)
+                由于内部修改发生了变化100：
+                +------+
+                | num  |
+                +------+
+                |  100 |
+                +------+
+                1 row in set (0.00 sec)
+
+                Query OK, 0 rows affected (0.00 sec)
+            1.4.2.3 创建out变量存储过程
+                mysql> delimiter ##
+                mysql> create procedure p_out01(out num int) begin select num; set num=100; select num; end##
+                Query OK, 0 rows affected (0.01 sec)
+                mysql> delimiter ;
+
+                mysql> call p_out01(@num);
+                +------+
+                | num  |
+                +------+
+                | NULL |
+                +------+
+                1 row in set (0.00 sec)
+
+                +------+
+                | num  |
+                +------+
+                |  100 |
+                +------+
+                1 row in set (0.00 sec)
+
+                Query OK, 0 rows affected (0.00 sec)
+            1.4.2.4 如何是创建inout形参变量的存储过程会以上两种变量变化
+    1.5 创建变量
+        1.5.1 用户变量
+            set @[变量名]=值;表示这是一个用户变量，使用时用@[变量名]
+        1.5.2 局部变量方法
+            在函数内部设置declare [变量名] [变量类型] 为局部变量，局部变量可以使用set赋值或者使用into关键字
+    1.6 使用函数和存储过程
+        1.6.1 使用show status 语句查看存储过程和函数信息
+            语法：
+                show [procedure | function ] status [like '存储过程或者存储函数名称']
+                显示内容：数据库，名字，类型，创建者，创建和修改日期
+        1.6.2 使用show create 语句查看存储过程和函数的定义
+            语法：
+                show create [procedure | function ] 存储过程或者存储函数的名称
+
+    1.7 删除存储过程或者存储函数
+        语法:
+            DROP [PROCEDURE | FUNCTION ] [IF EXISTS] sp_name
+
+
+    1.8 练习
+        1.8.1 编写一个函数，传入两个参数，分别是两个记录id，返回这两个分数之差。
+            mysql> delimiter ##
+            mysql> create function st03(uid1 int,uid2 int)
+                -> returns float
+                -> begin
+                -> set @val1=(select score from cls where id=uid1);
+                -> set @val2=(select score from cls where id=uid2);
+                -> set @r=@val1-@val2;
+                -> return @r;
+                -> end ##
+            Query OK, 0 rows affected (0.01 sec)
+
+            mysql> delimiter ;
+
+            调用函数
+            mysql> select st03(1,2);
+            +-----------+
+            | st03(1,2) |
+            +-----------+
+            |        17 |
+            +-----------+
+            1 row in set (0.00 sec)
+
+            mysql>
+        1.8.2 编写一个存储过程，传入学生id，通过out类型的参数，获取这个学生的年龄。
+            mysql> delimiter ##
+            mysql> create procedure get_age(in uid int,out num int)
+                -> begin
+                -> declare val int;
+                -> select age from cls where id=uid into val;
+                -> set num=val;
+                -> end ##
+            Query OK, 0 rows affected (0.00 sec)
+
+
 02 事务控制
+    2.1 事务定义
+        一件事开始发生到结束的过程，数据事务通常指对数据库进行读或写的一个操作序列。
+        mysql事务主要用于处理操作量大，复杂度高的数据，在人员管理系统中，删除一个人员，既需要删除人员的基本资料，
+        也要删除与该人员相关的信息，如果操作就必须同时操作成功，如果有一个不成功则所有数据都不动，这时数据库操作诗句
+        就构成一个事务。事务主要处理数据的增删改操作。
+    2.2 事务作用
+        事务的存在包含有以下两个目的：
+        1. 为数据库操作提供了一个从失败中恢复到正常状态的方法，同时提供了数据库即使异常状态下仍能保持一致性
+        的方法。
+        2. 当多个应用程序在并发访问数据库时，可以在这些应用程序之间提供一个隔离方法，以防止特此的操作互相干扰。
+    2.3 事务四大特征
+        2.3.1 原子性(atomicity)
+            一个事务必须视为一个不可分割的最小工作单元，整个事务中所有操作要么全部提交成功，要么全部失败回滚
+            ，对于一个事务来说，不可能只执行其中的一部分操作。
+        2.3.2 一致性(consistency)
+            事务完成时，数据必须处于一致状态，数据的完整性约束没有被破坏，事务在执行过程中发生错误，则回到事务
+            开始前的状态，就像这个事务从来没有执行过一样。
+        2.3.3 隔离性(isolation)
+            一人事务所做的修改在最终提交以前，对其他事务是不可见的，多个事务相互独立的。
+         2.3.4 持久性(durability)
+            一旦事务提交，则其所做的修改就永久保存到数据库中，此时即使系统崩溃，修改的数据也不会丢失。
+    2.4 事务操作过程
+        2.4.1 begin 开启一个事务操作
+        mysql> begin;
+        Query OK, 0 rows affected (0.00 sec)
+        2.4.2 查看原表数据
+        mysql> select * from cls;
+        +----+------+-----+------+-------+
+        | id | name | age | sex  | score |
+        +----+------+-----+------+-------+
+        |  1 | tom  |  11 | m    |   100 |
+        |  2 | joy  |  12 | m    |    83 |
+        +----+------+-----+------+-------+
+        2 rows in set (0.00 sec)
+
+        2.4.3 插入数据
+        mysql> insert into cls values(3,'jame',12,'m',73);
+        Query OK, 1 row affected (0.00 sec)
+
+        2.4.4 查看增加的数据
+        mysql> select * from cls;
+        +----+------+-----+------+-------+
+        | id | name | age | sex  | score |
+        +----+------+-----+------+-------+
+        |  1 | tom  |  11 | m    |   100 |
+        |  2 | joy  |  12 | m    |    83 |
+        |  3 | jame |  12 | m    |    73 |
+        +----+------+-----+------+-------+
+        3 rows in set (0.00 sec)
+
+        2.4.5 最后提交，如果不提交，其他用户或者其他终端的查看的数据还是原来没有增加的老数据，
+        只有commit提交后，其他用户才能看到数据
+        mysql> commit;
+        Query OK, 0 rows affected (0.00 sec)
+
+        注意：
+            关于提交有两种：
+            commit:提交是要修改的数据，不提交其他用户就查看不到。
+            rollback: 回滚就是在事务中修改的数据全部撤销。
+    2.5 事务操作
+        2.5.1 开启事务
+            2.5.1.1 方法1
+                begin;
+            2.5.1.2 方法2
+                start stransaction;
+        2.5.2 具体事务
+            就是一条或者n条SQL命令与语句
+        2.5.3 终止事务
+            2.5.3.1 方法1
+                若begin之后没有commit，而是使用其他语句，比如select，那么会自动commit，修改直接生效。
+                此方法只适合开启事务的终端或者用户。
+            2.5.3.2 方法2
+                commit; 事务中SQL命令都执行成功，提交到数据库，结束
+            2.5.3.3 方法3
+                rollback; 有sql命令执行失败，回滚到初始状态，结束。
+    2.6 隔离特征
+        2.6.1 读未提交:read uncommitted
+            事务A和事务B，事务A未提交的数据，事务B可以读取到。
+            这里读取到的数据叫做"脏数据"
+            这种隔离级别最低，这种级别一般是在理论上存在，数据库隔离级别一般都高于该级别。
+        2.6.2 读已提交:read committed
+            事务A和事务B，事务A提交的数据，事务B才能读取到。
+            这种隔离级别高于读未提交
+            换句话说，对方事务提交之后的数据，我当前事务才能读取到
+            这种级别可以避免"脏数据"
+            这种隔离级别会导致"不可重复读取"
+        2.6.3 可重复读: repeatable read
+            事务A和事务B，事务A提交之后的数据，事务B读取不到，
+            事务B是可重复读取数据
+            这种隔离级别高于读已提交
+            MYSQL默认级别
+            虽然可以达以可重复读取，但是会导致"幻像读"
+        2.6.4 串行化:serializable
+            事务A和事务B，事务A在操作数据时，事务B只能排队等待。
+            这种隔离级别很少使用，吞吐量太低，用户体验差
+            这种级别可以避免"幻像读"，每一次读取的都是数据库真实存在数据，事务A和事务B串。
+    2.7 事务隔离级别的修改
+        set session transaction isolation level read committed
 03 数据库优化
+    3.1 范式思想
+        设计关系数据库时，遵从不同的规范要求，设计出合理关系型数据库，这些不同的规范要求被称不同的范式.
+        目前关系数据库有六种范式：
+            第一范式(1NF)
+            第二范式(2NF)
+            第三范式(3NF)
+            巴斯-科德范式(BCNF)
+            第四范式(4NF)
+            第五范式(5NF) 又称完美范式
+        3.1.1 第一范式
+            数据库表的每一列都是不可分割的原子数据项，而不能是集合、数组、记录等组合的数据项。简单来说要求数据
+            库中的表示二维表，每个数据元素不可再分。
+        3.1.2 第二范式：
+            第二范式要求数据库表中的每个实例或者记录必须可以被唯一地区分，所有属性你依赖于主属性。即选取一个能
+            区分每个实体的属性或者属性组，作为实体的唯一标识，每个属性都能被主属性筛选。
+        3.1.3 第三范式:
+            在第二范式的基础上属性不传递依赖，即生个属性于其他非主属性，要求一个关系中不包含已在其他关系已包含的非
+            主关键字信息。
+    3.2 存储引擎
+        3.2.1 定义
+            mysql数据库管理系统中用来处理表的处理器
+        3.2.2 基本操作
+            3.2.2.1 查看所有存储引擎
+                show engines;
+            3.2.2.2 查看已有表的存储引擎
+                show create table 表名;
+            3.2.2.3 创建表指定
+                create table 表名 (...)engine=MyISAM,charset=utf8;
+            3.2.2.4 已有表指定
+                alter table 表名 engine=InnoDB;
+        3.2.2 常见mysql引擎
+            3.2.2.1 InnoDB
+                1. 支持行级锁，仅对指定的记录进行加锁，这样其他进程还是可以对同一个表中的其他记录进行操作
+                2. 支持外键、事务、事务回滚
+                3. 表字段和索引同存储在一个文件中
+            3.2.2.2 MyISAM
+                1. 不支持事务
+                2. 表级锁定
+                3. 读写互相阻塞
+                4. 只会缓存索引
+                5. 读取速度较快，占用资源相对较少
+    3.3 SQL语句优化
+        3.3.1 尽量选择数据类型占空间少，在where、group by、order by中出现的频率高的字段建立索引。
+        3.3.2 explain 放在查询语句前面可以获取查询计划，建立合适索引。
+        3.3.3 尽量避免使用select * ...;用具体字段代替*,不要返回用不到的任何字段。
+        3.3.4 少使用like %查询，否则会全表扫描。
+        3.3.5 子查询优化为join查询-控制使用自定义函数。
+        3.3.6 单条查询最后添加limit 1,停止全表扫描-where子句中不使用!=，否则放弃索引全表扫描。
+        3.3.7 尽量避免null值判断，否则放弃索引全表扫描
+            优化前：select number from t1 where number is null;
+            优化后：select number from t1 where number = 0;
+        3.3.8 在number列上设置默认值0，确保number列无null值尽量避免or连接条件，否则放弃索引全表扫描，
+        可以用union代替。
+            优化前：select id from t1 where id=10 or id =20;
+            优化后：select id from t1 where id=10 union all select id from t1 where id=20;
+        3.3.9 尽量避免使用in 和 not in，否则全表扫描
+            优化前：select id from t1 where id in(1,2,3,4);
+            优化后：select id from t1 where id between 1 and 4;
+    3.4 字段数据类型选择
+        3.4.1 优先程序
+            数字 > 时间日期 > 字符串
+        3.4.2 同级别
+            占用空间小的 > 占用空间多的
+        3.4.3 少于50字节
+            char > varchar
+        3.4.4 对数据存储精确不要求
+            float > decimel
+        3.4.5 如果很少被查询可以用TIMESTAMP(时间戳实际是整形存储)
+    3.5 键的设置
+        3.5.1 InnoDB如果不设备主键也会自己设置隐含的主键，所以最后自己设置
+        3.5.2 尽量设置占用空间小的字段为主键
+        3.5.3 外键的设置用于保持数据完整性，但是会降低数据导入和操作效率，特别是高并发情况下，而且会增加
+        维护成本
+        3.5.4 虽然高并发下不建议使用外键约束，但是在表关联时建议在关联键上建立索引，以提高查找速度。
+    3.6 explain语句
+        使用explain关键字可以模拟优化器执行SQL查询语句，从而知道mysql是如何处理你的sql语句的，这可以
+        帮你分析你的查询语句或者是表结构的性能瓶颈。
+        explain select * from class_1 where id < 5;
+
+        通过explain命令可以得到：
+        1. 表的读取顺序
+        2. 数据读取操作的操作类型
+        3. 哪些索引可以使用-哪些索引被实际使用
+        4. 表之间的引用-每张表有多少行被优化器查询
+        explain主要字段解析：
+        1. table : 显示这一行的数据是关于哪张表的
+        2. type: 这是最重要的字段之一，显示查询使用了何种类型，从最好的到最差的连接类型为：
+            system
+            const
+            eq_reg
+            ref
+            range
+            index
+            ALL
+            如果查询表尽量为range级别以上才可以
+        3. possible_keys: 显示可能应用在这张表的索引，如果为空，表示没有可能应用的索引。
+        4. key:实际使用的索引，如果为NULL，则没有使用索引
+        5. rows: mysql认为必须检索的用来返回请求数据的行数
+    3.7 表的拆分
+        垂直拆分: 表中列太多，分为多个表，每个表是其中的几个列
+        将常查询的放到一起，bolb或text类型字段放到另一个表
+        水平拆分：减少每个表的数据量，通过hash key进行划分然后拆成多个表。
+
 04 用户和权限管理
+    4.1 用户管理
+        4.1.1 开启远程登录
+            4.1.1.1 sudo -i
+            4.1.1.2 cd /etc/mysql/mysql.conf.d
+            4.1.1.3 cp mysqld.cnf mysqld.cnf.bak
+            4.1.1.4 vim mysql.cnf
+                找到44行左右，加#注释
+                # bind-address = 127.0.0.1
+                [mysqld]
+                    character_set_server = utf8
+                保存退出
+            4.1.1.5 重启服务
+                service mysql restart
+                或者
+                systemctl restart mysql.service
+            4.1.1.6 登录mysql数据库修改用户表host值
+                use mysql;
+                update user set host='%' where user='root';
+            4.1.1.7 刷新权限
+                flush privileges;
+
+        4.1.2 查看用户表中的host/user/authenication_string
+            mysql> select host,user,authentication_string from user;
+            +----------------+------------------+------------------------------------------------------------------------+
+            | host           | user             | authentication_string                                                  |
+            +----------------+------------------+------------------------------------------------------------------------+
+            | %              | root             | *DBFB68D54A54CBFACE890FBAA002AB11892CD2AC                              |
+            | 192.168.42.236 | zxl              | $A$005$W{M:r@IyF)B!|O1Zo6dQK4NhtQE/WkkBVS5Nj/Mn2iRXQMDuvoXjrHdDD |
+            | localhost      | debian-sys-maint | $A$005$P*@fFQVeV5|?H}]cDPdVeiMUrBqpqMMXvR57buJRJsXQx9zXoz59DtAD36 |
+            | localhost      | mysql.infoschema | $A$005$THISISACOMBINATIONOFINVALIDSALTANDPASSWORDTHATMUSTNEVERBRBEUSED |
+            | localhost      | mysql.session    | $A$005$THISISACOMBINATIONOFINVALIDSALTANDPASSWORDTHATMUSTNEVERBRBEUSED |
+            | localhost      | mysql.sys        | $A$005$THISISACOMBINATIONOFINVALIDSALTANDPASSWORDTHATMUSTNEVERBRBEUSED |
+            +----------------+------------------+------------------------------------------------------------------------+
+    4.2 添加用户
+        4.2.1 用root用户登录mysql
+            mysql -uroot -pzhangxuelong
+        4.2.2 添加用户%表示自动选择可用IP
+            CREATE USER 'username'@'host' IDENTIFIED BY 'password';
+        4.2.3 删除用户
+            DELETE FROM MYSQL.USER WHERE USER='username';
+            或者
+            DROP USER "用户名"@"%";
+
+        创建用户可以登录数据库，但是对无法对数据库操作。只能进行授权操作才可以使用。
+    4.3 表权限管理
+        4.3.1 对用户授予表权限
+            grand 权限表表 on 库.表  to  "用户名"@"%" identified by "密码" whith grand option;
+        4.3.2 对用户删除权限
+            revoke insert,update,select on 库.表 from 'user'@'%';
+            4.3.2.1 权限类型：
+                all privileges
+                select
+                insert
+                update
+                delete
+                alter等
+            4.3.2.2 库.表
+                *.* 代表所有库的所有表
+
 05 Pymysql模块
+    5.1 Pymysql 是第三方模块，使用时就需要提前安装
+    5.2 模块使用流程
+        5.2.1 建立数据库连接
+            db = pymysql.connect(...)
+        5.2.2 创建游标对象
+            cur = db.cursor()
+        5.2.3 游标方法
+            cur.execute("insert ...")
+        5.2.4 提交到数据库或者获取数据
+            提交到数据库
+                db.commit()
+            获取数据：
+                db.fetchall()
+        5.2.5 关闭游标对象
+            cur.close()
+        5.2.6 断开数据库连接
+            db.close()
+    5.3 数据库对象方法
+        5.3.1 创建数据库连接对象：
+            db = pymysql.connect(参数列表)
+                host:主机地址，本地地址为localhost
+                port:端口号，默认为3306
+                user:用户名
+                password:密码
+                database:库
+                charset:编码方式，推荐使用:uft8
+        5.3.2 数据库连接对象(db)的方法
+            cur = db.cursor() : 返回游标对象，用于执行具体SQL命令
+            db.commit(): 提交到数据库执行
+            db.rollback(): 回滚，用于当commit()出错时回复到原来的数据形态
+            db.close() : 关闭连接
+        5.3.3 游标对象方法
+            5.3.3.1 执行SQL命令
+                cur.execute(sql命令,[列表])
+            5.3.3.2 根据数据列表项多次执行SQL命令
+                cur.executemany(sql命令,[data])
+            5.3.3.3 获取查询结果集的第一条数据，查找到返回一个元组否则返回None
+                cur.fetchone()
+            5.3.3.4 获取前N条查找到的记录，返回结果为元组嵌套元组,((记录1),(记录2))
+                cur.fetchmany(n)
+            5.3.3.5 获取所有查找到的记录，返回结构形式同上
+                cur.fetchall()
+            5.3.3.6 关闭游标对象
+                cur.close()
+06 数据增补点
+    6.1 给已创建的表中增加新的字段
+        mysql> alter table cls add zxl int;
+        Query OK, 0 rows affected (0.37 sec)
+        Records: 0  Duplicates: 0  Warnings: 0
+
+        mysql> desc cls;
+        +-------+------------------+------+-----+---------+----------------+
+        | Field | Type             | Null | Key | Default | Extra          |
+        +-------+------------------+------+-----+---------+----------------+
+        | id    | int              | NO   | PRI | NULL    | auto_increment |
+        | name  | varchar(32)      | NO   | MUL | NULL    |                |
+        | age   | tinyint unsigned | NO   |     | NULL    |                |
+        | sex   | enum('w','m')    | YES  |     | NULL    |                |
+        | score | float            | YES  |     | 0       |                |
+        | img   | blob             | YES  |     | NULL    |                |
+        | zxl   | int              | YES  |     | NULL    |                |
+        +-------+------------------+------+-----+---------+----------------+
+        7 rows in set (0.00 sec)
+
+
+    6.2 已创建表中删除字段
+        mysql> alter table cls drop zxl;
+        Query OK, 0 rows affected (0.01 sec)
+        Records: 0  Duplicates: 0  Warnings: 0
+
+        mysql> desc cls;
+        +-------+------------------+------+-----+---------+----------------+
+        | Field | Type             | Null | Key | Default | Extra          |
+        +-------+------------------+------+-----+---------+----------------+
+        | id    | int              | NO   | PRI | NULL    | auto_increment |
+        | name  | varchar(32)      | NO   | MUL | NULL    |                |
+        | age   | tinyint unsigned | NO   |     | NULL    |                |
+        | sex   | enum('w','m')    | YES  |     | NULL    |                |
+        | score | float            | YES  |     | 0       |                |
+        | img   | blob             | YES  |     | NULL    |                |
+        +-------+------------------+------+-----+---------+----------------+
+        6 rows in set (0.00 sec)
+    6.3 在字段上有数据的情况也可以通过drop删除字段删除相关记录
+        mysql> select id,name,age,sex,zxl from cls where id=1;
+        +----+------+-----+------+------+
+        | id | name | age | sex  | zxl  |
+        +----+------+-----+------+------+
+        |  1 | tom  |  11 | m    |  100 |
+        +----+------+-----+------+------+
+        1 row in set (0.00 sec)
+
+        mysql> alter table cls drop zxl;
+        Query OK, 0 rows affected (0.01 sec)
+        Records: 0  Duplicates: 0  Warnings: 0
+
+
+
+                
+
+
+

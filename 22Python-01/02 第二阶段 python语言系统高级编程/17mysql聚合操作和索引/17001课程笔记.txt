@@ -45,9 +45,844 @@
             +----------+
             1 row in set (0.001 sec)
 
-11：27
+        *聚合函数不能查询多列的，只是单列数据
+             mysql> select max(attack),name from sanguo;
+            ERROR 1140 (42000): In aggregated query without GROUP BY, expression #2 of SELECT list contains nonaggregated column 'stu.sanguo.name'; this is
+            incompatible with sql_mode=only_full_group_by
+        查询魏国平均攻击力：
+            mysql> select avg(attack) from sanguo where country='魏';
+            +-------------+
+            | avg(attack) |
+            +-------------+
+            |    279.5000 |
+            +-------------+
+            1 row in set (0.00 sec)
+        1.2.2 聚合分组
+            使用group by 给查询的结果进行分组操作
+            1.3.1 举例说明-计算每个国家的平均攻击力
+                mysql> select country,avg(attack) from sanguo group by country;
+                +---------+-------------+
+                | country | avg(attack) |
+                +---------+-------------+
+                | 魏      |    279.5000 |
+                | 蜀      |   1108.8000 |
+                | 吴      |    252.7500 |
+                +---------+-------------+
+                3 rows in set (0.00 sec)
+            注意：
+                使用分组时select后的字段为group by分组的字段和聚合函数，不能包含其他内容。
+                group by也可以同时依照多个字段分组，如group by A,B 此时必须A,B两个字段值均相同才算一组。
+
+           mysql> select country,gender,avg(attack) from sanguo group by country,gender;
+            +---------+--------+-------------+
+            | country | gender | avg(attack) |
+            +---------+--------+-------------+
+            | 魏      | 男     |    316.6667 |
+            | 魏      | 女     |    168.0000 |
+            | 蜀      | 男     |   1137.0000 |
+            | 蜀      | 女     |    996.0000 |
+            | 吴      | 女     |    189.0000 |
+            | 吴      | 男     |    316.5000 |
+            +---------+--------+-------------+
+            6 rows in set (0.00 sec)
+        1.2.3 聚合筛选
+            使用having语句对分组聚合的结果进行进一步筛选。
+            1.2.3.1 举例说明-找出平均攻击力大于105的国家的前2名，显示国家的名称和平均攻击力。
+                mysql> select country,avg(attack) from sanguo group by country having avg(attack) > 105 order by avg(attack) desc limit 2;
+                +---------+-------------+
+                | country | avg(attack) |
+                +---------+-------------+
+                | 蜀      |   1108.8000 |
+                | 魏      |    279.5000 |
+                +---------+-------------+
+                2 rows in set (0.00 sec)
+            注意：
+                1. having语句通常与group by联合使用
+                2. having语句存在弥补了where关键字不能与聚合函数联合使用的不足，where只能操作表中实际存在的字段
+                having操作的是聚合函数生成的显示列。
+        1.2.4 去重语句
+            distinct 语句用于在查找时去除字段重复值。
+            注意：
+                distinct和from之间所有字段都相同才会去重。
+            举例说明：
+                表中都有哪此国家
+                    mysql> select distinct name,country from sanguo;
+                    +-----------+---------+
+                    | name      | country |
+                    +-----------+---------+
+                    | 曹操      | 魏      |
+                    | 张辽      | 魏      |
+                    | 甄姖      | 魏      |
+                    | 夏侯渊    | 魏      |
+                    | 刘备      | 蜀      |
+                    | 诸葛亮    | 蜀      |
+                    | 赵云      | 蜀      |
+                    | 张飞      | 蜀      |
+                    | 孙尚香    | 蜀      |
+                    | 大乔      | 吴      |
+                    | 小乔      | 吴      |
+                    | 周瑜      | 吴      |
+                    | 吕蒙      | 吴      |
+                    +-----------+---------+
+                    13 rows in set (0.00 sec)
+
+                    mysql> select distinct country from sanguo;
+                    +---------+
+                    | country |
+                    +---------+
+                    | 魏      |
+                    | 蜀      |
+                    | 吴      |
+                    +---------+
+                    3 rows in set (0.00 sec)
+
+                计算一共有多少个国家
+                    mysql> select distinct country from sanguo;
+                    +---------+
+                    | country |
+                    +---------+
+                    | 魏      |
+                    | 蜀      |
+                    | 吴      |
+                    +---------+
+                    3 rows in set (0.00 sec)
+        1.2.5、聚合运算
+            查询表记录时做数学运算
+            运算符：+ - * / %
+            举例说明：
+                查询时显示攻击力翻倍
+                    mysql> select name,attack*2 from sanguo;
+                    +-----------+----------+
+                    | name      | attack*2 |
+                    +-----------+----------+
+                    | 曹操      |      512 |
+                    | 张辽      |      656 |
+                    | 甄姖      |      336 |
+                    | 夏侯渊    |      732 |
+                    | 刘备      |     1760 |
+                    | 诸葛亮    |     1360 |
+                    | 赵云      |     3016 |
+                    | 张飞      |     2960 |
+                    | 孙尚香    |     1992 |
+                    | 大乔      |      380 |
+                    | 小乔      |      376 |
+                    | 周瑜      |      606 |
+                    | 吕蒙      |      660 |
+                    +-----------+----------+
+                    13 rows in set (0.00 sec)
+
+                更新蜀国所有英雄攻击力*2
+                    mysql> update sanguo set attack=attack*2 where country='蜀';
+                    Query OK, 5 rows affected (0.00 sec)
+                    Rows matched: 5  Changed: 5  Warnings: 0
+
+                    mysql> select name,attack from sanguo where country='蜀';
+                    +-----------+--------+
+                    | name      | attack |
+                    +-----------+--------+
+                    | 刘备      |   1760 |
+                    | 诸葛亮    |   1360 |
+                    | 赵云      |   3016 |
+                    | 张飞      |   2960 |
+                    | 孙尚香    |   1992 |
+                    +-----------+--------+
+                    5 rows in set (0.00 sec)
 
 02 索引操作
+    索引也是一柄双刃剑，有好处也有一些约束
+    优点：
+        加快数据检索速度，提高查找效率
+    缺点：
+        占用数据库物理存储空间，当对表中数据更新时，索引需要动态维护，降低数据写入效率。
+    所以综上，在数据量小或者对数据表的操作太多为写操作而不是查找操作的时候并适合创建索引。
+    即使适合创建索引的情形也要根据实际查找字段的需要进行创建。
+     2.1 普通索引
+        普通索引：字段值无约束，KEY标志为MUL
+        创建方法：
+            create table 表名(字段名 数据类型，字段名 数据类型，index (字段名),index(字段名),);
+        在已创建表中创建索引：
+            create index 索引名 on 表名（字段名）;
+        查看表索引：
+            mysql> desc cls;
+            +-------+------------------+------+-----+---------+----------------+
+            | Field | Type             | Null | Key | Default | Extra          |
+            +-------+------------------+------+-----+---------+----------------+
+            | id    | int              | NO   | PRI | NULL    | auto_increment |
+            | name  | varchar(32)      | NO   |     | NULL    |                |
+            | age   | tinyint unsigned | NO   |     | NULL    |                |
+            | sex   | enum('w','m')    | YES  |     | NULL    |                |
+            | score | float            | YES  |     | 0       |                |
+            | img   | blob             | YES  |     | NULL    |                |
+            +-------+------------------+------+-----+---------+----------------+
+            6 rows in set (0.01 sec)
+
+            mysql> show create table cls;
+            +-------+---------------------------------------------------------------------------------------------------------------------------------------
+            ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+| Table | Create Table
+                                                                                                                                                                                          |+-------+---------------------------------------------------------------------------------------------------------------------------------------
+            ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+| cls   | CREATE TABLE `cls` (
+              `id` int NOT NULL AUTO_INCREMENT,
+              `name` varchar(32) NOT NULL,
+              `age` tinyint unsigned NOT NULL,
+              `sex` enum('w','m') DEFAULT NULL,
+              `score` float DEFAULT '0',
+              `img` blob,
+              PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB AUTO_INCREMENT=34 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci |
+            +-------+---------------------------------------------------------------------------------------------------------------------------------------
+            ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+1 row in set (0.00 sec)
+        删除索引：
+            drod index 索引名 on 表名;
+
+            举例说明：
+                mysql> drop index index_name on cls;
+                Query OK, 0 rows affected (0.01 sec)
+                Records: 0  Duplicates: 0  Warnings: 0
+
+
+    2.2 唯一索引
+        唯一索引：字段值不允许生蚝，但可以为NULL，KEY标志为UNI。
+
+        创建方法：
+            create table 表名（字段名 数据类型，字段名 数据类型,unique(字段名));
+
+        已有表中创建唯一索引：
+            create unique index 索引名 on 表名（字段名）;
+        查看索引：
+            同上2.1
+        删除索引：
+            同上2.1
+    2.3 主键索引
+        主键索引（PRI):一个表中只能有一个主键字段，主键字段不允许重复，且不能为NULL，KEY标志为PRI.
+        通常设置记录编号字段ID，能唯一锁定一条记录。
+        在之前的学习中已经学习过如何创建主键索引，看一下主键索引的其他操作
+        * 已有表添加索引：
+            alter table 表名 add primary key(id);
+        * 创建复合主键：
+            primary key (uid,pid);
+        * 删除主键索引：
+            alter table 表名 drop primary key;
+    2.4 查看删除索引
+        2.4.1 查看索引
+            * 通过KEY标志判断索引： desc 表名;
+            * 查看索引详细信息： show index from 表名;
+        2.4.2 删除索引
+            drop index 索引名 on表名;
+    2.5 索引结构
+        MYSQL最为常用的就是使用T-Tree结构构建索引表。建立索引之后，数据库将会自行维护类似的树形索引，便于查询。
+        但是树形索引的维护，使得对数据的增加和删除操作变得耗时，同样也增加了数据所占用的存储资源。
+        2.5.1 B+树
+            B+树是一种特殊的树型结构，结构特点：
+            1. 树中每个非叶节点最多有m个子节点；
+            2. 根节点至少有两个子树，除根外，所有非叶节点至少有[m/2]个子节点，有n个子节点的非叶节点有n-1个关键值域
+            3. 所有叶子节点处于同一层上，包含了全部关键值以及指向相应数据对象存储地址的指针，且叶节点本身按键值从小到大
+            顺序链接。
+            4. 所有非叶节点可以看作为索引部分，节点中关键值与指向子树的指针构成了对树的索引项。
+
 03 外键约束
+    3.1 外键约束
+        约束：约束是一种限制，它通过对表的行或列的数据做出限制，来确保表的数据完整性、唯一性。
+        外键约束：建立表与表之间的某种约束的关系，由于这种关系的存在，能够让表与表之间的数据，更加的完整，关连性更强。
+    3.2 创建两个关键表dep和person
+        mysql> desc dep;
+        +-------+-------------+------+-----+---------+----------------+
+        | Field | Type        | Null | Key | Default | Extra          |
+        +-------+-------------+------+-----+---------+----------------+
+        | id    | int         | NO   | PRI | NULL    | auto_increment |
+        | dname | varchar(50) | NO   |     | NULL    |                |
+        +-------+-------------+------+-----+---------+----------------+
+        2 rows in set (0.00 sec)
+
+        mysql> desc person;
+        +-----------+-------------------+------+-----+---------+----------------+
+        | Field     | Type              | Null | Key | Default | Extra          |
+        +-----------+-------------------+------+-----+---------+----------------+
+        | id        | int               | NO   | PRI | NULL    | auto_increment |
+        | name      | varchar(32)       | NO   |     | NULL    |                |
+        | age       | tinyint           | YES  |     | NULL    |                |
+        | sex       | enum('w','m','o') | YES  |     | NULL    |                |
+        | salary    | decimal(8,2)      | YES  |     | NULL    |                |
+        | hire_date | date              | YES  |     | NULL    |                |
+        | dept_id   | int               | YES  | MUL | NULL    |                |
+        +-----------+-------------------+------+-----+---------+----------------+
+        7 rows in set (0.00 sec)
+
+        查看各表数据：
+        mysql> select * from dep;
+        +----+-----------+
+        | id | dname     |
+        +----+-----------+
+        |  1 | 技术部    |
+        |  2 | 市场部    |
+        |  3 | 销售部    |
+        |  4 | 行政部    |
+        |  5 | 财务部    |
+        +----+-----------+
+        5 rows in set (0.00 sec)
+
+        mysql> select * from person;
+        +----+------+------+------+----------+------------+---------+
+        | id | name | age  | sex  | salary   | hire_date  | dept_id |
+        +----+------+------+------+----------+------------+---------+
+        |  1 | Lily |   28 | w    | 10000.00 | 2018-01-02 |       2 |
+        |  2 | Lucy |   22 | w    |  6000.00 | 2019-07-02 |       3 |
+        |  3 | Tom  |   36 | m    | 25000.00 | 2017-05-07 |       1 |
+        |  4 | Jame |   29 | m    | 20000.00 | 2018-09-16 |       3 |
+        +----+------+------+------+----------+------------+---------+
+        4 rows in set (0.01 sec)
+
+        dep表为主表，person从表，主表与从表是一对多的关系。
+    3.3 外键作用
+        1. 由数据库自身保证数据一致性，完整性，更可靠，因为程序很难100%保证的完整性，而用外键即使在数据库服务器
+        当机或者出现其他问题的时候，也能够最大限度的保证数据的一致性和完整性。
+        2. 设置外键约束的两个表之间会具有父子关系即子表中外键的字段的取值范围由父表所决定。
+        3. 设备外键一定程序上降低数据库的速度。
+        4. 子表的外键字段的数据类型和父表中要一致。
+    3.4 建立外键约
+        3.4.1 创建外键语法
+            在创建子表最后添加如下语法：
+            [CONSTRAINT symbol] FOREIGN KEY [id] (index_col_name,...) PEFERENCES tbl_name (index_col_name,...)
+            [ON DELETE {RESTRICT | CASCADE | SET NULL| NO ACTION}]
+            [ON UPDATE {RESTRICT | CASCADE | SET NULL| NO ACTION}]
+
+            在已存在的表中添加外键：
+            alter table person add constraint dept_fk foreign key (dept_id) references dep(id);
+
+            mysql> alter table person add constraint dept_fk foreign key (dept_id) references dep(id);
+            Query OK, 4 rows affected (0.11 sec)
+            Records: 4  Duplicates: 0  Warnings: 0
+
+            该语法可以在CREATE TABLE和ALTER TABLE时使用，如果不指定CONSTRAINT symbol,mysql会自动生成一个名字，可以
+            通过show create table [tb]命令查看。
+
+        3.4.2 通过外键名称解除外键约束
+            ALTER TABLE [tbl] drop FOREIGN KEY [foreign_key_name];
+            注意：
+                删除外键后发现desc查看索引标志还在，其实外键也是一种索引，需要将外键名称的索引删除之后才可以。
+
+            删除外键与索引：
+                mysql> alter table person drop foreign key dept_fk;
+                Query OK, 0 rows affected (0.00 sec)
+                Records: 0  Duplicates: 0  Warnings: 0
+
+                mysql> desc person;
+                +-----------+-------------------+------+-----+---------+----------------+
+                | Field     | Type              | Null | Key | Default | Extra          |
+                +-----------+-------------------+------+-----+---------+----------------+
+                | id        | int               | NO   | PRI | NULL    | auto_increment |
+                | name      | varchar(32)       | NO   |     | NULL    |                |
+                | age       | tinyint           | YES  |     | NULL    |                |
+                | sex       | enum('w','m','o') | YES  |     | NULL    |                |
+                | salary    | decimal(8,2)      | YES  |     | NULL    |                |
+                | hire_date | date              | YES  |     | NULL    |                |
+                | dept_id   | int               | YES  | MUL | NULL    |                |
+                +-----------+-------------------+------+-----+---------+----------------+
+                7 rows in set (0.00 sec)
+
+                mysql> drop index dept_fk on person;
+                Query OK, 0 rows affected (0.00 sec)
+                Records: 0  Duplicates: 0  Warnings: 0
+
+                mysql> desc person;
+                +-----------+-------------------+------+-----+---------+----------------+
+                | Field     | Type              | Null | Key | Default | Extra          |
+                +-----------+-------------------+------+-----+---------+----------------+
+                | id        | int               | NO   | PRI | NULL    | auto_increment |
+                | name      | varchar(32)       | NO   |     | NULL    |                |
+                | age       | tinyint           | YES  |     | NULL    |                |
+                | sex       | enum('w','m','o') | YES  |     | NULL    |                |
+                | salary    | decimal(8,2)      | YES  |     | NULL    |                |
+                | hire_date | date              | YES  |     | NULL    |                |
+                | dept_id   | int               | YES  |     | NULL    |                |
+                +-----------+-------------------+------+-----+---------+----------------+
+                7 rows in set (0.00 sec)
+        3.4.3 级联动作
+            1. restrict(默认): on delete restrict on update restrict
+                当主表删除记录时，如果从表中有相关联记录则不允许主表删除
+                当主表更改主键字段值时，如果从表有相关记录则不允许更改
+
+                操作举例：
+                1.1 创建外键约束
+                mysql> alter table person add constraint dept_fk foreign key (dept_id) references dep(id);
+                Query OK, 4 rows affected (0.03 sec)
+                Records: 4  Duplicates: 0  Warnings: 0
+
+                mysql>
+                1.2 查看主表数据
+                mysql> select * from dep;
+                +----+-----------+
+                | id | dname     |
+                +----+-----------+
+                |  1 | 技术部    |
+                |  2 | 市场部    |
+                |  3 | 销售部    |
+                |  4 | 行政部    |
+                |  5 | 财务部    |
+                +----+-----------+
+                5 rows in set (0.00 sec)
+
+                1.3 删除主表id为1的记录，提示有外键关联无法删除，这就是默认动作
+                mysql> delete from dep where id=1;
+                ERROR 1451 (23000): Cannot delete or update a parent row: a foreign key constraint fails (`stu`.`person`, CONSTRAINT `dept_fk` FOREIGN KEY (`dep
+                t_id`) REFERENCES `dep` (`id`))
+
+                1.4 修改主表ID为1的记录，提示也是不能修改
+                mysql> update dep set id = 6 where id = 1;
+                ERROR 1451 (23000): Cannot delete or update a parent row: a foreign key constraint fails (`stu`.`person`, CONSTRAINT `dept_fk` FOREIGN KEY (`dep
+                t_id`) REFERENCES `dep` (`id`))mysql>
+
+            2. cascade: 数据级联更新 on delete cascade on update cascade
+                当主表删除记录或者更改被参照字段的值时，从表从级联更新。
+
+                操作举例：
+                2.1 创建外键修改默认级联动作
+                    删除原来外键约束，然后创建新的外键约束并修改默认级联动作。
+                    mysql> alter table person add constraint dept_fk foreign key (dept_id) references dep(id) on delete cascade on update cascade;
+                    Query OK, 4 rows affected (0.05 sec)
+                    Records: 4  Duplicates: 0  Warnings: 0
+
+                    修改主表id为1的记录，改为6
+                    mysql> update dep set id=6 where id=1;
+                    Query OK, 1 row affected (0.01 sec)
+                    Rows matched: 1  Changed: 1  Warnings: 0
+
+                    相应的从表的关于dept_id 为1的也会修改为6
+                    mysql> select * from person;
+                    +----+------+------+------+----------+------------+---------+
+                    | id | name | age  | sex  | salary   | hire_date  | dept_id |
+                    +----+------+------+------+----------+------------+---------+
+                    |  1 | Lily |   28 | w    | 10000.00 | 2018-01-02 |       2 |
+                    |  2 | Lucy |   22 | w    |  6000.00 | 2019-07-02 |       3 |
+                    |  3 | Tom  |   36 | m    | 25000.00 | 2017-05-07 |       6 |
+                    |  4 | Jame |   29 | m    | 20000.00 | 2018-09-16 |       3 |
+                    +----+------+------+------+----------+------------+---------+
+                    4 rows in set (0.00 sec)
+
+                    所以说明此关联动作随之主表更新。
+
+            3. set null: on delete set null on update set null
+                当主表删除记录时，从表外键字段值变为null
+                当主表更改主键字段值时，从表外键字段值变为null
+            4. no action: 同restrict
+                都是立即检查外键限制
+
 04 表关联关系与关联查询
+    4.1 表关联设计
+        4.1.1 一对一模型
+            一张表的一条记录一定只能与另外一张表的一条记录进行对应，反之亦然。
+            创建表实例：
+                mysql> show create table student;
+                +---------+-------------------------------------------------------------------------------------------------------------------------------------
+                ------------------------------------------------+| Table   | Create Table
+                                                                |+---------+-------------------------------------------------------------------------------------------------------------------------------------
+                ------------------------------------------------+| student | CREATE TABLE `student` (
+                  `id` int NOT NULL AUTO_INCREMENT,
+                  `name` varchar(50) NOT NULL,
+                  PRIMARY KEY (`id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci |
+                +---------+-------------------------------------------------------------------------------------------------------------------------------------
+                ------------------------------------------------+1 row in set (0.01 sec)
+
+                mysql> show create table record;
+                +--------+--------------------------------------------------------------------------------------------------------------------------------------
+                --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+| Table  | Create Table
+                                                                                                                                                                                                                                          |+--------+--------------------------------------------------------------------------------------------------------------------------------------
+                --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+| record | CREATE TABLE `record` (
+                  `id` int NOT NULL AUTO_INCREMENT,
+                  `comment` text NOT NULL,
+                  `st_id` int DEFAULT NULL,
+                  PRIMARY KEY (`id`),
+                  UNIQUE KEY `st_id` (`st_id`),
+                  CONSTRAINT `record_ibfk_1` FOREIGN KEY (`st_id`) REFERENCES `student` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci |
+                +--------+--------------------------------------------------------------------------------------------------------------------------------------
+                --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+1 row in set (0.00 sec)
+        4.1.2 一对多模型
+            一张表中有一条记录要吧对应另外一张表中的多条记录，但是反过来，另外一张表的一条记录只能对应第一张表的一我要记录，
+            这种关系就是一对多或者多对一。
+            创建实例：
+            车主表：
+                mysql> show create table person_car;
+                +------------+----------------------------------------------------------------------------------------------------------------------------------
+                ---------------------------------------------------------------------------------------------------+| Table      | Create Table
+                                                                                                                   |+------------+----------------------------------------------------------------------------------------------------------------------------------
+                ---------------------------------------------------------------------------------------------------+| person_car | CREATE TABLE `person_car` (
+                  `id` int NOT NULL,
+                  `name` varchar(30) DEFAULT NULL,
+                  `sex` char(1) DEFAULT NULL,
+                  `age` int DEFAULT NULL,
+                  PRIMARY KEY (`id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci |
+                +------------+----------------------------------------------------------------------------------------------------------------------------------
+                ---------------------------------------------------------------------------------------------------+1 row in set (0.01 sec)
+            汽车表：
+                mysql> show create table car1;
+                +-------+---------------------------------------------------------------------------------------------------------------------------------------
+                ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+| Table | Create Table
+                                                                                                                                                                                                                    |+-------+---------------------------------------------------------------------------------------------------------------------------------------
+                ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+| car1  | CREATE TABLE `car1` (
+                  `id` int NOT NULL,
+                  `name` varchar(30) DEFAULT NULL,
+                  `price` decimal(10,2) DEFAULT NULL,
+                  `pid` int DEFAULT NULL,
+                  PRIMARY KEY (`id`),
+                  KEY `car_fk1` (`pid`),
+                  CONSTRAINT `car_fk1` FOREIGN KEY (`pid`) REFERENCES `person_car` (`id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci |
+                +-------+---------------------------------------------------------------------------------------------------------------------------------------
+                ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+1 row in set (0.00 sec)
+
+                mysql>
+
+        4.1.3 多对多模型
+            一对表中(A)的一条记录能够对应另外一张表(B)中的多条记录；同时B表中的一条记录也能对应A表中的多条记录
+            多对多一定要借助第三张表来关联关系。
+
+            举例：一个运动员可以报多个项目，每个项目也会有多个运行员参加，这时为了不表达多对多关系需要单独创建关系表。
+            运动员表：
+                mysql> create table athlete01(id int not null auto_increment,name varchar(30) default null,age tinyint not null,country varchar(30) not null,des
+                cription varchar(30) default null,primary key (id));Query OK, 0 rows affected (0.02 sec)
+
+                mysql> show create table athlete01;
+                +-----------+-----------------------------------------------------------------------------------------------------------------------------------
+                --------------------------------------------------------------------------------------------------------------------------------------------------------------+| Table     | Create Table
+                                                                                                                                                                              |+-----------+-----------------------------------------------------------------------------------------------------------------------------------
+                --------------------------------------------------------------------------------------------------------------------------------------------------------------+| athlete01 | CREATE TABLE `athlete01` (
+                  `id` int NOT NULL AUTO_INCREMENT,
+                  `name` varchar(30) DEFAULT NULL,
+                  `age` tinyint NOT NULL,
+                  `country` varchar(30) NOT NULL,
+                  `description` varchar(30) DEFAULT NULL,
+                  PRIMARY KEY (`id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci |
+                +-----------+-----------------------------------------------------------------------------------------------------------------------------------
+                --------------------------------------------------------------------------------------------------------------------------------------------------------------+1 row in set (0.00 sec)
+
+            运动项目表：
+                mysql> create table item01(id int primary key auto_increment,rname varchar(30));
+                Query OK, 0 rows affected (0.04 sec)
+
+                mysql> show create table item01;
+                +--------+--------------------------------------------------------------------------------------------------------------------------------------
+                ---------------------------------------------------+| Table  | Create Table
+                                                                   |+--------+--------------------------------------------------------------------------------------------------------------------------------------
+                ---------------------------------------------------+| item01 | CREATE TABLE `item01` (
+                  `id` int NOT NULL AUTO_INCREMENT,
+                  `rname` varchar(30) DEFAULT NULL,
+                  PRIMARY KEY (`id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci |
+                +--------+--------------------------------------------------------------------------------------------------------------------------------------
+                ---------------------------------------------------+1 row in set (0.00 sec)
+
+                mysql>
+
+            运动员与项目关联关系表：
+                mysql> create table athlete_item01(aid int not null,tid int not null,primary key(aid,tid),constraint athlete01_fk foreign key (aid) references a
+                thlete01(id),constraint item01_fk foreign key (tid) references item01(id));Query OK, 0 rows affected (0.06 sec)
+
+
+                mysql> show create table athlete_item01;
+                +----------------+------------------------------------------------------------------------------------------------------------------------------
+                ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+| Table          | Create Table
+                                                                                                                                                                                                                                                 |+----------------+------------------------------------------------------------------------------------------------------------------------------
+                ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+| athlete_item01 | CREATE TABLE `athlete_item01` (
+                  `aid` int NOT NULL,
+                  `tid` int NOT NULL,
+                  PRIMARY KEY (`aid`,`tid`),
+                  KEY `item01_fk` (`tid`),
+                  CONSTRAINT `athlete01_fk` FOREIGN KEY (`aid`) REFERENCES `athlete01` (`id`),
+                  CONSTRAINT `item01_fk` FOREIGN KEY (`tid`) REFERENCES `item01` (`id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci |
+                +----------------+------------------------------------------------------------------------------------------------------------------------------
+                ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+1 row in set (0.00 sec)
+
+                mysql>
+    4.2 关联查询
+        关联查询并不是一定要建立外键关系时才可以进行查询的。
+        如果多个表存在一定关联关系，可以多表在一起进行查询操作，其实表的关联查询与外键约束之间并没有必然联系，
+        但是基于外键约束设计的具有关联性的表往往会更多使用关联查询查找数据。
+        4.2.1 多个表数据可以联合查询
+            select 字段1，字段2,.... from 表1，表2,... [where 条件]
+
+            实例:
+            mysql> select * from dep,person where dep.id = person.dept_id;
+            +----+-----------+----+------+------+------+----------+------------+---------+
+            | id | dname     | id | name | age  | sex  | salary   | hire_date  | dept_id |
+            +----+-----------+----+------+------+------+----------+------------+---------+
+            |  2 | 市场部    |  1 | Lily |   28 | w    | 10000.00 | 2018-01-02 |       2 |
+            |  3 | 销售部    |  2 | Lucy |   22 | w    |  6000.00 | 2019-07-02 |       3 |
+            |  6 | 技术部    |  3 | Tom  |   36 | m    | 25000.00 | 2017-05-07 |       6 |
+            |  3 | 销售部    |  4 | Jame |   29 | m    | 20000.00 | 2018-09-16 |       3 |
+            +----+-----------+----+------+------+------+----------+------------+---------+
+            4 rows in set (0.00 sec)
+
+       4.2.2 内连接查询
+        内连接查询只会查找到符合条件的记录，其实结果和表关联查询是一样的。
+        语法：
+            SELECT 表1 INNER JOIN 表2 ON 表1.字段 = 表2.字段；
+            select * from person inner join dep on person.dept_id = dep.id;
+        4.2.3 外连接查询
+            4.2.3.1 左连接查询
+                左连接：左有为主表，显示右表中与左表匹配的项
+                语法格式：
+                    SELECT 字段列表 FROM 表1 LEFT JOIN 表2 ON 表1.字段 = 表2.字段；
+
+                    select * from person left join dept on person.dept_id = dep.id;
+
+                    mysql> select * from person left join dep on person.dept_id = dep.id;
+                    +----+------+------+------+----------+------------+---------+------+-----------+
+                    | id | name | age  | sex  | salary   | hire_date  | dept_id | id   | dname     |
+                    +----+------+------+------+----------+------------+---------+------+-----------+
+                    |  1 | Lily |   28 | w    | 10000.00 | 2018-01-02 |       2 |    2 | 市场部    |
+                    |  2 | Lucy |   22 | w    |  6000.00 | 2019-07-02 |       3 |    3 | 销售部    |
+                    |  3 | Tom  |   36 | m    | 25000.00 | 2017-05-07 |       6 |    6 | 技术部    |
+                    |  4 | Jame |   29 | m    | 20000.00 | 2018-09-16 |       3 |    3 | 销售部    |
+                    +----+------+------+------+----------+------------+---------+------+-----------+
+                    4 rows in set (0.00 sec)
+            4.2.3.2 右连接查询
+                右连接：右表为主表，显示左表中与右表匹配的项
+                语法格式：
+                    SELECT 字段列表 FROM 表1 RIGHT JOIN 表2 ON 表1.字段 = 表2.字段；
+
+                    select * from person RIGHT join dept on person.dept_id = dep.id;
+
+
+                    mysql> select * from person right join dep on person.dept_id = dep.id;
+                    +------+------+------+------+----------+------------+---------+----+-----------+
+                    | id   | name | age  | sex  | salary   | hire_date  | dept_id | id | dname     |
+                    +------+------+------+------+----------+------------+---------+----+-----------+
+                    |    1 | Lily |   28 | w    | 10000.00 | 2018-01-02 |       2 |  2 | 市场部    |
+                    |    2 | Lucy |   22 | w    |  6000.00 | 2019-07-02 |       3 |  3 | 销售部    |
+                    |    4 | Jame |   29 | m    | 20000.00 | 2018-09-16 |       3 |  3 | 销售部    |
+                    | NULL | NULL | NULL | NULL |     NULL | NULL       |    NULL |  4 | 行政部    |
+                    | NULL | NULL | NULL | NULL |     NULL | NULL       |    NULL |  5 | 财务部    |
+                    |    3 | Tom  |   36 | m    | 25000.00 | 2017-05-07 |       6 |  6 | 技术部    |
+                    +------+------+------+------+----------+------------+---------+----+-----------+
+                    6 rows in set (0.00 sec)
+
+
 05 视图和数据导出
+    5.1 视图介绍
+        视图是存储的查询语句，当调用的时候，产生结果集，视图充当的是虚拟表的角色。其实视图可以理解为一个表或者多个表中
+        导出来的表，作用和真实表一样，包含一系列带有行和列的数据，视图中，用户可以使用SELECT语句查询数据，也可以使用
+        INSERT,UPDATE,DELETE修改记录，视图可以使用户操作方便，并保障数据库系统安全。
+    5.2 视图功能优缺点
+        优点：
+            1. 是对数据的一种重构，不影响原数据表的使用
+            2. 简化高频复杂操作的过程，就像一种对复杂操作的封装
+            3. 提高安全性，可以给不同用户提供不同的视图
+            4. 让数据更加清晰
+        缺点：
+            1. 视图的性能相对较差，从数据库视图查询数据可能会很慢。
+            2. 表依赖关系处理麻烦，根据数据库的基础表创建一个视图。每当更改视图或者原表时，另一个也会修改。
+    5.3 创建视图
+        语法结构：
+            CREATE [OR REPLACE] VIEW [view_name] AS [SELECT_STATEMENT];
+            释义：
+                CREATE VIEW: 创建视图
+                OR REPLACE : 可选，如果添加原来有同名视图的情况下会覆盖掉原来视图
+                view_name : 视图名称
+                SELECT_STATEMENT: SELECT 语句
+
+        5.3.1 视图操作实例：
+            5.3.1.1 创建视图sg_view
+                mysql> create view sg_view as select name,country attack from sanguo where attack > 200;
+                Query OK, 0 rows affected (0.01 sec)
+
+            5.3.1.2 查询表，发现创建成功视图sg_view
+                mysql> show tables;
+                +----------------+
+                | Tables_in_stu  |
+                +----------------+
+                | athlete        |
+                | athlete01      |
+                | athlete_item   |
+                | athlete_item01 |
+                | car            |
+                | car1           |
+                | cls            |
+                | course         |
+                | dep            |
+                | interest       |
+                | item           |
+                | item01         |
+                | marathon       |
+                | people         |
+                | person         |
+                | person_car     |
+                | personcar      |
+                | record         |
+                | sanguo         |
+                | sg             |
+                | sg_view        |
+                | student        |
+                | student1       |
+                | student_course |
+                | teacher        |
+                | user           |
+                | words          |
+                +----------------+
+                27 rows in set (0.00 sec)
+
+            5.3.1.3 查询sg_view视图内容
+                mysql> select * from sg_view;
+                +-----------+--------+
+                | name      | attack |
+                +-----------+--------+
+                | 曹操      | 魏     |
+                | 张辽      | 魏     |
+                | 夏侯渊    | 魏     |
+                | 刘备      | 蜀     |
+                | 诸葛亮    | 蜀     |
+                | 赵云      | 蜀     |
+                | 张飞      | 蜀     |
+                | 孙尚香    | 蜀     |
+                | 周瑜      | 吴     |
+                | 吕蒙      | 吴     |
+                +-----------+--------+
+                10 rows in set (0.00 sec)
+            5.3.1.4 针对视图删除操作，查看原表是否也被删除相关记录
+                通过查询发现在视图中把记录删除，同样原表中也会删除相应记录，相反对原表修改也同样影响视图
+                mysql> delete from sg_view where name="周瑜";
+                Query OK, 1 row affected (0.00 sec)
+
+                mysql> select * from sg_view;
+                +-----------+--------+
+                | name      | attack |
+                +-----------+--------+
+                | 曹操      | 魏     |
+                | 张辽      | 魏     |
+                | 夏侯渊    | 魏     |
+                | 刘备      | 蜀     |
+                | 诸葛亮    | 蜀     |
+                | 赵云      | 蜀     |
+                | 张飞      | 蜀     |
+                | 孙尚香    | 蜀     |
+                | 吕蒙      | 吴     |
+                +-----------+--------+
+                9 rows in set (0.00 sec)
+
+                mysql> select * from sanguo;
+                +----+-----------+--------+---------+--------+---------+
+                | id | name      | gender | country | attack | defense |
+                +----+-----------+--------+---------+--------+---------+
+                |  1 | 曹操      | 男     | 魏      |    256 |      63 |
+                |  2 | 张辽      | 男     | 魏      |    328 |      69 |
+                |  3 | 甄姖      | 女     | 魏      |    168 |      34 |
+                |  4 | 夏侯渊    | 男     | 魏      |    366 |      83 |
+                |  5 | 刘备      | 男     | 蜀      |   1760 |      59 |
+                |  6 | 诸葛亮    | 男     | 蜀      |   1360 |      54 |
+                |  7 | 赵云      | 男     | 蜀      |   3016 |      66 |
+                |  8 | 张飞      | 男     | 蜀      |   2960 |      80 |
+                |  9 | 孙尚香    | 女     | 蜀      |   1992 |      62 |
+                | 10 | 大乔      | 女     | 吴      |    190 |      44 |
+                | 11 | 小乔      | 女     | 吴      |    188 |      39 |
+                | 13 | 吕蒙      | 男     | 吴      |    330 |      71 |
+                +----+-----------+--------+---------+--------+---------+
+                12 rows in set (0.00 sec)
+
+                mysql>
+            5.3.1.5 查看数据库中有多少视图
+                mysql> show full tables in stu where table_type like 'VIEW';
+                +---------------+------------+
+                | Tables_in_stu | Table_type |
+                +---------------+------------+
+                | sg_view       | VIEW       |
+                +---------------+------------+
+                1 row in set (0.00 sec)
+            5.3.1.6 修改视图
+                是通过创建同名视图来进行修改,加上or replace如果存在就会替换原视图。
+                或者通过alter view sg_view as 进行修改
+                mysql> create or replace view sg_view as select * from sanguo where country = '魏';
+                Query OK, 0 rows affected (0.03 sec)
+            5.3.1.7 删除视图
+                drop view view_name;
+                或者
+                drop view if exists sg_view;
+    5.4 复制数据表
+        5.4.1 表的复制
+            语法：
+                create table 表名 select 查询命令；
+            注意：
+                1. 表能根据实际需求复制数据
+                2. 复制表时不会把KEY属性复制过来
+            作用：
+                可以起到表备份的使用
+            实例：
+                创建复制魏国数据
+                mysql> create table sg_wei_copy select * from sanguo where country = '魏';
+                Query OK, 4 rows affected (0.02 sec)
+                Records: 4  Duplicates: 0  Warnings: 0
+                查看魏国记录
+                mysql> select * from sg_wei_copy;
+                +----+-----------+--------+---------+--------+---------+
+                | id | name      | gender | country | attack | defense |
+                +----+-----------+--------+---------+--------+---------+
+                |  1 | 曹操      | 男     | 魏      |    256 |      63 |
+                |  2 | 张辽      | 男     | 魏      |    328 |      69 |
+                |  3 | 甄姖      | 女     | 魏      |    168 |      34 |
+                |  4 | 夏侯渊    | 男     | 魏      |    366 |      83 |
+                +----+-----------+--------+---------+--------+---------+
+                4 rows in set (0.00 sec)
+                在新的复制表中删除id为1的记录
+                mysql> delete from sg_wei_copy where id = 1;
+                Query OK, 1 row affected (0.00 sec)
+                查看记录删除
+                mysql> select * from sg_wei_copy;
+                +----+-----------+--------+---------+--------+---------+
+                | id | name      | gender | country | attack | defense |
+                +----+-----------+--------+---------+--------+---------+
+                |  2 | 张辽      | 男     | 魏      |    328 |      69 |
+                |  3 | 甄姖      | 女     | 魏      |    168 |      34 |
+                |  4 | 夏侯渊    | 男     | 魏      |    366 |      83 |
+                +----+-----------+--------+---------+--------+---------+
+                3 rows in set (0.00 sec)
+                查看原表数据记录保留
+                mysql> select * from sanguo where country = '魏';
+                +----+-----------+--------+---------+--------+---------+
+                | id | name      | gender | country | attack | defense |
+                +----+-----------+--------+---------+--------+---------+
+                |  1 | 曹操      | 男     | 魏      |    256 |      63 |
+                |  2 | 张辽      | 男     | 魏      |    328 |      69 |
+                |  3 | 甄姖      | 女     | 魏      |    168 |      34 |
+                |  4 | 夏侯渊    | 男     | 魏      |    366 |      83 |
+                +----+-----------+--------+---------+--------+---------+
+                4 rows in set (0.00 sec)
+
+                所以表复制起到备份数据表的作用。
+        5.4.2 数据库备份
+            5.4.2.1 备份命令格式：
+                # mysqldump -u用户名 -p 源库名 > ~/stu.sql
+                --all-databases : 备份所有库
+                db_name : 备份单个库
+                -B 库1 库2 库3 : 备份多个库
+                库名 表1 表2 表3 : 备份指定库的多张表
+
+                实例说明:
+                    # mysqldump -uroot -p --all-databases > all.sql
+                    # mysqldump -uroot -p stu > stu.sql
+                    # mysqldump -uroot -p -B stu mysql > stu_mysql.sql
+                    # mysqldump -uroot -p stu sg > stusg.sql
+
+            5.4.2.2 恢复命令格式：
+                # mysql -uroot -p 目标库名 < stu.sql
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
