@@ -10,3 +10,5 @@ print(bytes)
 # 字节串转换为字符串
 print(b01.decode())
 print(bytes.decode())
+
+
