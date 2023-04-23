@@ -7,7 +7,7 @@ from socket import *
 sockfd = socket()  # 默认值
 
 # 创建服务端地址
-server_addr = ('127.0.0.1', 8000)
+server_addr = ('127.0.0.1',8888)
 
 # 发起连接
 sockfd.connect(server_addr)

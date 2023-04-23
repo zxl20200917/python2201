@@ -1,0 +1,593 @@
+01 Process创建进程
+    1.1 进程模块
+        multiprocessing是python中多进程管理的一个包，用一个目标函数实例化一个Precess对象，并调用start()
+        让它开始工作，并且在父进程中可以使用join()函数等待子进程的退出。
+        其实使用multiprocessing创建进程的内部原理与fork相同，只是做了进一步的封装。
+        创建出的进程也是原有进程的子进程，同样拷贝父进程的内存空间，在执行上互不影响。在这种封装下，更方便
+        同时创建多个子进程。
+    1.2 进程创建流程
+        multiprocessing创建进程的基本流程如下：
+        1. 需要将新进程事件封装为函数
+        2. 使用multiprocessing提供的Process创建进程对象
+        3. 通过对象和Process的初始化函数可以对进程进行设置，以及绑定要执行事件。
+        4. 如果有需要可以对生产的进程对象属性进一步赋值，设置进程属性。
+        5. 启动进程，会自动的执行函数代表的事件
+        6. 完成进程的回收，防止产生僵尸进程。
+    1.3 进程创建类和函数
+        1.3.1 Process()
+            功能：创建进程对象
+            参数：
+                name 给创建的进程对象起一个名字默认为Process-1
+                target 绑定的进程执行的函数 （func名字， 不能写func()如果带小括号就是函数调用了）
+                args   元组 用来给进程函数传参按位置值参
+                kwargs  字典  按照键值方式给进程函数值参
+
+        1.3.2 p.start()
+            功能：启动进程，进程被创建，自动运行绑定的进程函数
+            注：
+                当调用start()时进程才真正的被创建，创建的子进程同样进程复制父进程空间，之后有自己独立的
+                执行空间，互不干扰。
+
+        1.3.3 p.join([timeout])
+            功能：阻塞等待对应子进程的退出，回收子进程
+            参数：
+                超时时间
+
+            如果不使用join，则子进程会成为僵尸进程
+            在使用multiprocessing创建进程中，一般父进程功能就是创建子进程等待回收，不做过多其他事件。
+
+    1.4 创建实例
+        1.4.1 实例1
+            1.4.1.1 Linux平台
+                """
+                    process应用实例
+                """
+                import multiprocessing as mp
+                from time import sleep
+
+
+                def func():
+                    print("开始一个进程")
+                    sleep(3)
+                    print("结束一个进程")
+
+
+                p = mp.Process(target=func)
+
+                p.start()
+                # p.start()启动的是子进程，如果要启动父进程，就需要在在p.start()与p.join()之间
+                # 如下：
+                print("父进程执行内容")
+                p.join()
+
+            1.4.1.2 windows平台
+                """
+                    process简单进程创建
+                """
+                import multiprocessing
+                import multiprocessing as mp
+                from time import sleep
+
+
+                # 进程执行函数
+                def func():
+                    print("开始一个进程")
+                    sleep(3)
+                    print("进程结束")
+
+
+                # 创建进程对象
+                p = mp.Process(target=func)
+
+                # # 启动进程
+                # p.start()
+                #
+                # # 回收进程
+                # p.join()
+
+                def main():
+                    p.start()
+                    p.join()
+
+                if __name__ == '__main__':
+                    # 在windows平台，必须增加如下模式才可以，不然报错
+                    multiprocessing.freeze_support()
+                    main()
+        1.4.2 实例
+            具体功能实例请参考实例22002 至 22006实例代码
+
+
+02 进程对象和进程类
+    2.1 进程属性
+        2.1.1 进程对象属性
+            pid : 创建的子进程的PID
+            name : 创建的进程名称
+            daemon : 默认为False 主进程退出不会影响子进程,如果设备为True则主进程退出时会让所有子进程退出，
+                     需要在start()之前使用
+
+        2.1.2 is_alive()
+            查看进程状态
+
+        2.1.3 multiprocessing.current_process()
+            获取当前进程对象
+
+    2.2 自定义进程类
+        2.2.1 自定义进程类简介
+            在multiprocessing中，可以通过继承Process类来定义自己的进程类。通过这样的方法可以更加自由的控制
+            自定义进程执行内容和执行流程。
+
+        2.2.2 自定义进程类流程
+            创建自定义进程类流程：
+            1. 自定义类，继承Process类
+            2. 在自定义类的__init__方法中运行Process类的__init__以获取父类属性
+            3. 重写run方法，在通过自定义类生成对象后，调用start()会自动执行这个方法
+
+        2.2.3 自定义进程类实例
+            详细查看22010exciser进程效率对比案例
+
+03 进程池
+    3.1 进程资源消耗
+        使用多进程编程可以有效的利用计算机的多核，提高程序的执行效率，但是进程也是有缺点的：
+        首先：创建进程需要消耗时间，销毁进程也需要时间
+        其次：即使开启了很多进程，操作系统也不能让它们同时执行，这样反而会影响程序的效率
+        在这样的情况下，如果有大量的任务需要多进程完成任务时，则可能需要频繁的创建和删除进程，给计算机
+        带来较多的消耗。
+
+    3.2 进程池
+        进程池：定义了一个池子， 在里面放上固定数量的进程，有需求来了，就拿这个池中一个进程来处理任务，等待
+        处理完毕，进程并不关闭，而是将进程再放回进程池中继续等待。如果有许多任务需要执行，池中的进程数量不够
+        ，任务就要等待之前的进程执行任务完毕归来，拿到空闲进程才能继续执行。
+
+        进程池中进程的数量固定，同一时间最多有固定数量的进程再运行，这样不会增加操作系统的调试难度，还节省了
+        开闭进程的时间，也一定程度上能够实现并发效果。
+
+    3.3 Pool类创建进程池
+        multiprocessing中的Pool类可以提供指定数量的进程供用户调用，当有新的请求提交Pool中时，如果池还没有满，
+        就会调用一个进程来执行请求，如果池满，请求就会告知等待，直到池中有进程结束，才会来执行这些请求。
+        使用方法：
+        1. 创建进程池，在池内放入适当的进程
+        2. 将封装好的函数事件加入到进程池队列
+        3. 事件不断运行，所有事件运行完成
+        4. 关闭进程池，回收进程
+
+        3.3.1 Pool(processes)
+            功能： 创建进程池对象
+            参数： processes 表示进程池中有多少进程
+            对象： 进程池对象
+
+        3.3.2 pool.apply_async(func,args,kwds)
+            功能： 从进程池里取出一个进程并异步执行
+            参数：
+                func : 要放入进程池的事件函数
+                args : 给func函数以元组形式位置传参
+                kwds : 给func函数以字典形式键值传参
+            返回值: 返回一个事件对象
+
+        3.3.3 pool.map(func,iter)
+            功能 : 将要做的事件加入进程池
+            参数 :
+                func : 事件函数
+                iter : 迭代对象
+            返回值: 函数的返回值列表
+
+        3.3.4 pool.close()
+            功能: 关闭进程池不能再添加新的事件
+
+        3.3.5 pool.join()
+            功能 : 回收进程池
+
+
+04 进程间通信
+    4.1 进程间通信概念
+        进程间通信(IPC,Interprocess communication)是一组编程接口,让程序员能够协调不同的进程,使之能在一个
+        操作系统里同时运行,并相互传递,交换信息.这使得一个程序能够在同一时间里处理许多用户的要求.
+        因为即使只有一个用户发出要求,也可能导致一个操作系统中多个进程的运行,进程之间必须互相通话.IPC接口就
+        提供了这种可能性,每个IPC方法均有它自己的优点和局限性.
+
+        在python中主要采用消息队列与socket两种进行进程间通信
+
+    4.2 消息队列
+        利用multiprocess完成进程间通信的一种简单方法是使用一个Queue来回传消息,消息满足先进先出的原则.
+        在内存中建立队列模型,进程通过队列 消息存入,或者从队列取出完成进程间通信.
+
+        4.2.1 q = Queue(maxsize = 0)
+            功能: 创建队列
+            参数:
+                maxsize 默认表示根据系统分配空间存储消息,如果传入一个正整数则表示最多存放多少条消息.
+            返回值: 队列对象
+
+        4.2.2 q.put(data,[block,timeout])
+            功能: 存放消息
+            参数:
+                data 存入的消息(python数据类型)
+                block 默认为True表示队列满的时候阻塞,设置为False则表示非阻塞
+                timeout 当block为True表示超时时间
+
+
+        4.2.3 data = q.get([block,timeout])
+            功能: 取出消息
+            参数:
+                block 默认为True表示队列满的时候阻塞,设置为False则表示非阻塞
+                timeout 当block为True表示超时时间
+            返回值: 返回获取的消息
+
+
+        4.2.4 其他队列函数
+            q.full() : 判断队列是否为满
+            q.empty() : 判断队列是否为空
+            q.qsize() : 判断当前队列有多少消息
+            q.close() :  关闭队列
+
+    4.3 进程间通信实例测试
+        4.3.1 windows系统代码实例
+            注意:
+                1. 创建队列一定是在主进程下创建的
+                2. 各子进程下调用父进程下队列一定是把队列作为参数传递给子进程
+            代码如下:
+            from multiprocessing import Process
+            from multiprocessing import Queue
+            from time import sleep
+
+            # FIFO
+            q = Queue(3)
+
+            # 在创建子进程事件函数时设置形参queue
+            def bar(queue):
+                for i in range(4):
+                    sleep(2)
+                    queue.put(i)
+
+            # 在创建子进程事件函数时设置形参queue
+            def foo(queue):
+                while True:
+                    try:
+                        print(queue.get(timeout=3))
+                    except:
+                        return
+
+            def main():
+                # 在创建子进程时需要把队列作为参数传递过去
+                p1 = Process(target=bar,args=(q,))
+                # 在创建子进程时需要把队列作为参数传递过去
+                p2 = Process(target=foo,args=(q,))
+
+                p1.start()
+                p2.start()
+
+                p1.join()
+                p2.join()
+
+            if __name__ == '__main__':
+                main()
+
+        4.3.2 Linux平台进程间通信实例
+            注: 在创建子进程时可以直接调用,而不需要把队列作为参数传递给子进程绑定函数事件
+            代码如下:
+            from multiprocessing import Process
+            from multiprocessing import Queue
+            from time import sleep
+
+            # FIFO
+            queue_obj = Queue(3)
+
+
+            def bar():
+                for i in range(4):
+                    sleep(2)
+                    queue_obj.put(i)
+
+
+            def foo():
+                while True:
+                    try:
+                        print(queue_obj.get(timeout=3))
+                    except:
+                        return
+
+            def main():
+                p1 = Process(target=bar)
+                p2 = Process(target=foo)
+
+                p1.start()
+                p2.start()
+
+                p1.join()
+                p2.join()
+
+            if __name__ == '__main__':
+                main()
+
+    4.4 应用实例练习
+        4.4.1 windows平台
+            由于此平台的 队列 需要作为参数给子进程,所以直接调用q.get 或者 q.put 无法生效
+            重点是注意:windows平台目录分隔符为 "\"; 由于分隔符是转义字符,所以采用 "\\"
+
+            具体代码如下:
+                """
+                    拷贝目录
+                        使用进程池拷贝一个目录及目录中所有内容
+                        1. 目录中的内容均为普通文件
+                        2. 进程池中执行的每个进程事件拷贝一个文件
+                        3. 实时显示拷贝的百分比
+                """
+                from multiprocessing import Pool, Queue
+                import os
+
+                # 创建消息队列
+                q = Queue()
+
+
+                # 复制文件
+                def copy_file(file, old_folder, new_folder):
+                    fr = open(old_folder + '\\' + file, 'rb')
+                    fw = open(new_folder + '\\' + file, 'wb')
+                    # 开始拷贝
+                    while True:
+                        data = fr.read(1024 * 1024)
+                        if not data:
+                            break
+                        # n 为返回写入的字节数
+                        n = fw.write(data)
+                        # 把返回写入的字节放入队列
+                        q.put(n)
+                    fr.close()
+                    fw.close()
+
+
+                def main():
+                    # 拷贝基准目录下的目录
+                    base_path = "E:\\develop\\"
+                    dir = input("输入你要拷贝的目录:")
+                    # 待拷贝的目录
+                    old_folder = base_path + dir
+
+                    # 目标目录
+                    new_folder = old_folder + '备份'
+                    if not new_folder:
+                        os.mkdir(new_folder)
+
+                    # 获取文件列表
+                    all_file = os.listdir(old_folder)
+
+                    # 计算目录大小
+                    total_size = 0
+                    for file in all_file:
+                        total_size += os.path.getsize(old_folder + '\\' + file)
+
+                    # 创建进程池
+                    # 把每个拷贝的文件调用加入到一个进程中
+                    pool = Pool()
+                    for file in all_file:
+                        # 每个copy_file复制一个文件
+                        pool.apply_async(copy_file, args=(file, old_folder, new_folder))
+                    # 关闭进程池
+                    pool.close()
+
+                    # 打印出目录总大小
+                    print("目录总大小:%.2fM" % (total_size / 1024 / 1024))
+
+                    # 定义拷贝初始大小变量为0
+                    copy_size = 0
+                    while True:
+                        copy_size += q.get()
+                        print("拷贝了%.2f%%" % (copy_size / total_size * 100))
+                        if copy_size >= total_size:
+                            break
+
+                    pool.join()
+
+
+                if __name__ == '__main__':
+                    main()
+
+        4.1.2 Linux平台
+            此平台可以直接调用q.put 与 q.get 所以运行正常,可以看到效果.
+            具体代码如下:
+
+                """
+                    拷贝目录
+                        使用进程池拷贝一个目录及目录中所有内容
+                        1. 目录中的内容均为普通文件
+                        2. 进程池中执行的每个进程事件拷贝一个文件
+                        3. 实时显示拷贝的百分比
+                """
+                from multiprocessing import Pool, Queue
+                import os
+
+                # 创建消息队列
+                q = Queue()
+
+
+                # 复制文件
+                def copy_file(file, old_folder, new_folder):
+                    fr = open(old_folder + '/' + file, 'rb')
+                    fw = open(new_folder + '/' + file, 'wb')
+                    # 开始拷贝
+                    while True:
+                        data = fr.read(1024 * 1024)
+                        if not data:
+                            break
+                        # n 为返回写入的字节数
+                        n = fw.write(data)
+                        # 把返回写入的字节放入队列
+                        q.put(n)
+                    fr.close()
+                    fw.close()
+
+
+                def main():
+                    # 拷贝基准目录下的目录
+                    base_path = "/home/dp/PycharmProjects/"
+                    dir = input("输入你要拷贝的目录:")
+                    # 待拷贝的目录
+                    old_folder = base_path + dir
+
+                    # 目标目录
+                    new_folder = old_folder + '备份'
+
+                    os.mkdir(new_folder)
+
+                    # 获取文件列表
+                    all_file = os.listdir(old_folder)
+
+
+                    # 计算目录大小
+                    total_size = 0
+                    for file in all_file:
+                        total_size += os.path.getsize(old_folder + '/' + file)
+
+                    # 创建进程池
+                    # 把每个拷贝的文件调用加入到一个进程中
+                    pool = Pool()
+                    for file in all_file:
+                        # 每个copy_file复制一个文件
+                        pool.apply_async(copy_file, args=(file, old_folder, new_folder))
+                    # 关闭进程池
+                    pool.close()
+
+                    # 打印出目录总大小
+                    print("目录总大小:%.2fM" % (total_size / 1024 / 1024))
+
+                    # 定义拷贝初始大小变量为0
+                    copy_size = 0
+                    while True:
+                        copy_size += q.get()
+                        print("拷贝了%.2f%%" % (copy_size / total_size * 100))
+                        if copy_size >= total_size:
+                            break
+
+                    pool.join()
+
+
+                if __name__ == '__main__':
+                    main()
+
+            代码运行效果:
+                /home/dp/bin/python /home/dp/PycharmProjects/day003/copy_file_test.py
+                输入你要拷贝的目录:day002
+                目录总大小:0.01M
+                拷贝了2.15%
+                拷贝了7.75%
+                拷贝了12.43%
+                拷贝了27.06%
+                拷贝了29.78%
+                拷贝了31.97%
+                拷贝了37.57%
+                拷贝了39.33%
+                拷贝了43.52%
+                拷贝了45.48%
+                拷贝了52.82%
+                拷贝了61.53%
+                拷贝了79.64%
+                拷贝了84.47%
+                拷贝了87.75%
+                拷贝了97.72%
+                拷贝了100.00%
+
+                Process finished with exit code 0
+
+
+05 多线程编程
+    5.1 线程概述
+        线程(有时被称为轻量级进程)跟进程有些相似,不同的是,所有的线程运行在同一个进程中,共享相同的运行环境.
+        可以相像成是在主进程或者"主线程"中并行运行的"迷你进程"
+
+        由于进程的地址空间是私有的,因此在进程间上下文切换时,系统开销比较大,为了提高系统的性能,许多操作系统
+        规范里引入了轻量级进程的概念,被称为线程.在同一个进程中创建的线程共享该进程的地址空间.
+        在linux中线程和进程都参与统一的调度.
+
+    5.2 线程特征
+        线程也是多任务编程方式,有很多和进程类似的地方,但是又有着本质的区别:
+        线程特征如下:
+        1. 线程是计算机核心分配的最小单位
+        2. 一个进程可以包含多个线程
+        3. 线程也是一个运行过程,也要消耗计算机资源,多个线程共享其进程的资源和空间.
+        4. 线程也拥有自己特有的资源属性,比如指令集/TID等
+        5. 线程无论创建还是删除还是运行资源消耗都小于进程
+        6. 多个线程之间并行执行,互不干扰.
+
+    5.3 创建线程
+        5.3.1 threading.Thread()
+            功能: 创建线程对象
+            参数:
+                name  线程名称
+                target 线程函数
+                args  元组  给线程函数传参
+                kwargs 字典  给线程函数传参
+
+        5.3.2 t.start()
+            启动线程
+
+        5.3.3 t.join([timeout])
+            回收线程
+
+        5.3.4 线程属性
+            t.is_alive()  查看线程状态
+            t.name  线路名称  默认Thread-1
+            t.setName()  设置线程名称
+            t.getName()   获取线程名称
+            threading.currentThread()
+
+            t.daemon 默认情况, 主线程的结束不会影响分支线程,如果设置为True则主线程退出分支线程也会退出
+                设置方法:
+                    t.daemon = True
+                    t.setDaemon(True)
+                    t.isDaemon()    判断daemon属性值
+
+06 线程同步互斥
+    线程通信方法:是采用全局变量
+
+    6.1 线程通信
+        通信方法: 多个线程共用进程空间,所以进程的全局变量对进程内的线程均可见.因此使用全局变量通信是线程
+        主要通信方法
+
+        注意事项: 线程间通信更容易产生资源争夺,往往需要同步互斥机制保证通信安全
+
+
+    6.2  同步互斥概念
+        6.2.1 共享资源争夺
+            共享资源:多个进程或者线程都可以操作的资源称为共享资源.对共享资源的操作代码段称为临界区
+            影响: 此时往往需要同步互斥机制协调操作顺序
+
+        6.2.2 同步互斥概念
+            同步: 同步是一种协作关系,为完成操作,多进程都线程间形成一种协调,按照必要的步骤有序执行操作.
+            互斥: 互斥是一种制约关系,当一个里程或者线程占用资源时会进行加锁处理,此时其他进程线程就无法
+            该资源,直到解锁后才能操作.
+
+            6.2.2.1 线程的Event事件操作
+                e = threading.Event()
+                e.wait([timeout])
+                    如果e为设置状态则不阻塞;末设置则阻塞
+                e.set() 将e变为设置状态
+                e.clear() 将e设置去除
+
+
+            6.2.2.2 线程锁
+                线程锁
+                lock = threading.Lock() 创建锁
+                lock.acquire()  上锁
+                lock.release()  解锁
+                操作原理: 重复上锁acquire()会阻塞
+
+    6.3 死锁问题
+        死锁是指两个或者两个以上的线程在执行过程中,由于竞争资源或者由于彼此通信而造成的一种阻塞现象,若无
+        外力作用,它们都将无法推进下去.此时称系统处于死锁状态或者系统产生了死锁.
+
+        6.3.1 死锁发生的必要条件:
+            1. 互斥条件: 指线程对所分配到的资源进行排它性使用,即在一段时间内某资源只由一个进程占用.
+            2. 请求和保持条件:指线程已经保持至少一个资源,但又提出了新的资源请求,而该资源被其它进程占有,
+            此时请求线程阻塞,但又对自己获得的其他资源保持不放.
+            3. 不剥夺条件: 指线程已获得的资源,在未使用完之前,不能被剥夺,只能在使用完时由自己释放,通常CPU
+            内存资源是可以被系统强行调配剥夺的.
+            4. 环路等待条件: 指在发生死锁时,必然存在一个线程----资源的环形链,即进程集合{T0,T1,T2,...
+            ,Tn}中T0正在等待一个T1占用资源;T1正在等待T2占用资源,.....,Tn正在等待已被T0占用的资源.
+
+        6.3.2 避免死锁
+            避免死锁的情况发生是通过设置某些限制条件,去破坏产生死锁的四个必要条件中的一个或者几个,来预防发
+            生死锁.预防死锁是一种较易实现的方法,但是由于所施加的限制条件往往太严格,可能会导致系统资源利用率.
+            
+
+
+
+
+
